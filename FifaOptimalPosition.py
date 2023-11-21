@@ -31,7 +31,7 @@ def main():
     for i in allowedFormations:
         teams[i], average_rpp[i] = OptimisePositions(players, rpp, FORMATIONS[i])
 
-    optimalFormation = max(average_rpp, key=average_rpp.get)
+    optimalFormation = max(zip(average_rpp.values(), average_rpp.keys()))[1]
 
     print()
     print("===========Optimal Formation:", optimalFormation, "============")
@@ -53,7 +53,7 @@ def LoadPlayers(players, playerRating):
                 continue
 
             rpp[i] = {
-                dfrpp["Unnamed: 0"][j]: int(dfrpp[i][j])
+                dfrpp["Unnamed: 0"][j]: dfrpp[i][j].astype(int)
                 for j in range(len(dfrpp[i]))
                 if not np.isnan(dfrpp[i][j])
             }
@@ -179,7 +179,6 @@ def Restrictions(areas):
     Returns the valid formations given the team inputted by the user. So if
     the input team has 2 CBs then any formation that requires 3 CB is invalid.
     """
-
     areasInFormation = (
         AreasInFormation()
     )  # Number of positions in each area for every for
