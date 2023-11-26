@@ -9,6 +9,11 @@ AREAS = {
     for i in pd.read_csv("../AREAS.csv")
 }
 
+INDEX = pd.read_csv("../Index.csv")
+INDEX = {
+    INDEX["Rating"].tolist()[i]: INDEX["Unnamed: 0"].tolist()[i]
+    for i in range(len(INDEX))
+}
 POSITIONS = [
     "ST",
     "RW",
@@ -73,19 +78,26 @@ def FindPlayers(player_name, player_type, player_rating):
     # Find players that match
     with open("../player_info.csv") as file:
         next(file)  # Skip headers
+        for i in range(INDEX[player_rating]):  # Skip to position of player_rating
+            next(file)
         for _, line in enumerate(file):
             cols = line.split(",")
-            if int(cols[2]) < player_rating:
+
+            if int(cols[2]) < player_rating:  # Don't search the whole list.
                 break
-            if cols[7] == "":
+
+            if cols[7] == "":  # Players with no RPP (e.g GKs)
                 continue
+
             rating_match = str(player_rating) == cols[2]
             if not rating_match:
                 continue
+
             regex = [r"\b{}\b".format(x.lower()) for x in player_name.split(" ")]
             name_match = all([re.findall(x, cols[1].lower()) for x in regex])
             if not name_match:
                 continue
+
             type_match = all(
                 ([x.lower() in cols[6].lower() for x in player_type.split(" ")])
             )
@@ -130,7 +142,7 @@ def FindPlayers(player_name, player_type, player_rating):
 
     area = [i for i in AREAS if match[3] in AREAS[i]][0]
     rpp = {
-        POSITIONS[i]: int(match[i + 7])
+        POSITIONS[i]: int(float(match[i + 7]))
         for i in range(len(POSITIONS))
         if POSITIONS[i] in AREAS[area]
     }
@@ -360,6 +372,4 @@ def NthBestPos(player, rpp, n):
 
 
 if __name__ == "__main__":
-    tic = time.time()
     main()
-    print(time.time() - tic)
