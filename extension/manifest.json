@@ -1,0 +1,26 @@
+{
+    "name": "FifaOptimalPosition",
+    "version": "1.0",
+    "manifest_version": 3,
+    "description": "Calculates formation and team layout to give the highest rated team",
+
+    "page_action": {
+        "default_popup": "popup.html"
+    },
+
+    "background": {
+        "scripts": ["background.js"],
+        "persistant": false
+    }
+
+    "content_scripts": [
+    {
+        "js": ["content.js"],
+        "css": ["style.css"],
+        "matches": ["https://www.futbin.com/"]
+
+        }
+    ],
+
+    "permissions": ["tabs", "https://www.futbin.com/"]
+}
