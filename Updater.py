@@ -48,6 +48,7 @@ def main():
         if len(newPlayers) < 100:
             break
         page += 1
+    print("Up to date!")
 
 
 def get_new_players(pageno):
@@ -94,13 +95,14 @@ def get_new_players(pageno):
         for i in range(len(id))
         if int(id[i]) not in PLAYERRATINGS["ID"].values
     ]
+
     """
     Now get RPP for the new players.
     """
     for i in range(len(playerInfo)):
         if playerInfo[i]["Position"] == "GK":
             continue
-        time.sleep(random.uniform(0.0, 10.0))
+        time.sleep(random.uniform(0.0, 5.0))  # Prevent 403's
         print(id[i])
         rppDict = getRPP(id[i])
         playerInfo[i] = playerInfo[i] | rppDict
@@ -139,10 +141,14 @@ def add_to_player_list(dfPlayerInfo):
 def ratings_index(playerList):
     """Saves the index of the first instance of each rating to save time on searching."""
     index = {}
-    index[0] = str(playerList.loc[0, "Rating"])
+    index[2] = str(
+        playerList.loc[0, "Rating"]
+    )  # +2 is added to negate the offset. Python starts at 0 but the csv file starts at 2
+
     for i in range(1, len(playerList)):
         if playerList.loc[i - 1, "Rating"] != playerList.loc[i, "Rating"]:
-            index[i] = str(playerList.loc[i, "Rating"])
+            index[i + 2] = str(playerList.loc[i, "Rating"])
+    index[len(playerList) + 2] = str(playerList.loc[len(playerList) - 1, "Rating"] - 1)
 
     dfIndex = pd.DataFrame(index, index=["Rating"]).T
     dfIndex.to_csv("Index.csv")

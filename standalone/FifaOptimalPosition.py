@@ -1,4 +1,5 @@
 import time
+import linecache
 import re
 import pandas as pd
 
@@ -30,8 +31,6 @@ POSITIONS = [
     "RB",
     "RWB",
 ]
-
-# DFPLAYERS = pd.read_csv("../player_info.csv")
 
 
 def main():
@@ -74,38 +73,30 @@ def FindPlayers(player_name, player_type, player_rating):
     If multiple players match, user is asked to specify which one they want.
     Exits if no player is found matching the criteria."""
     matches = []
-
     # Find players that match
-    with open("../player_info.csv") as file:
-        next(file)  # Skip headers
-        for i in range(INDEX[player_rating]):  # Skip to position of player_rating
-            next(file)
-        for _, line in enumerate(file):
-            cols = line.split(",")
+    for i in range(INDEX[player_rating], INDEX[player_rating - 1]):
+        line = linecache.getline("../player_info.csv", i)
+        cols = line.split(",")
 
-            if int(cols[2]) < player_rating:  # Don't search the whole list.
-                break
+        if cols[7] == "":  # Players with no RPP (e.g GKs)
+            continue
 
-            if cols[7] == "":  # Players with no RPP (e.g GKs)
-                continue
+        rating_match = str(player_rating) == cols[2]
+        if not rating_match:
+            continue
 
-            rating_match = str(player_rating) == cols[2]
-            if not rating_match:
-                continue
+        regex = [r"\b{}\b".format(x.lower()) for x in player_name.split(" ")]
+        name_match = all([re.findall(x, cols[1].lower()) for x in regex])
+        if not name_match:
+            continue
 
-            regex = [r"\b{}\b".format(x.lower()) for x in player_name.split(" ")]
-            name_match = all([re.findall(x, cols[1].lower()) for x in regex])
-            if not name_match:
-                continue
+        type_match = all(
+            ([x.lower() in cols[6].lower() for x in player_type.split(" ")])
+        )
+        if not type_match:
+            continue
 
-            type_match = all(
-                ([x.lower() in cols[6].lower() for x in player_type.split(" ")])
-            )
-            if not type_match:
-                continue
-
-            matches.append(cols)
-
+        matches.append(cols)
     # Diffrienciate between duplicates
     if len(matches) > 1:
         print(
@@ -255,7 +246,6 @@ def AllocatePlayers(d, player, rpp, n, formation):
     while pos not in formationNoNums:
         n = n + 1
         pos = NthBestPos(player, rpp, n)
-
     d, code = PlacePlayer(d, player, pos, formationString, n)
     if code == 0:  # Player was placed successfully
         return d
