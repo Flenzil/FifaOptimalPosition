@@ -24,30 +24,30 @@ POSITIONS = [
     "RB",
     "RWB",
 ]
-LIVECARDS = ["ucl_live", "europa_live", "fc_pro"]
+
+LIVECARDS = [
+    "all_rttk",
+    "fc_pro",
+    "fc_pro_upgrade",
+]
 
 
 def main():
     page = 1
+    print("Checking for new players...")
     while True:
-        newPlayers = get_new_players(page)
-        updatedList = add_to_player_list(newPlayers)
-        # updatedList = update_live_cards(updatedList)
+        newPlayers = get_new_players(page)  # Find new players
+        updatedList = add_to_player_list(newPlayers)  # Add to list
 
-        updatedList["Rating"] = updatedList["Rating"].astype(int)
-        updatedList.sort_values(by=["Rating"], ascending=False, inplace=True)
-        updatedList.reset_index(drop=True, inplace=True)
-
-        ratings_index(updatedList)
-
-        updatedList.to_csv("player_info.csv", index=False)
-        """
-        The latest page has 100 entries per page, so scrolls to next page if 
-        necassary.
-        """
-        if len(newPlayers) < 100:
+        if len(newPlayers) < 100:  # Check if next page is needed
             break
         page += 1
+
+    updatedList = update_live_cards(updatedList)  # Update live cards
+    updatedList = sort_player_list(updatedList)  # Sort list by rating
+    ratings_index(updatedList)  # Index ratings
+
+    updatedList.to_csv("player_info.csv", index=False)  # Save
     print("Up to date!")
 
 
@@ -103,7 +103,6 @@ def get_new_players(pageno):
         if playerInfo[i]["Position"] == "GK":
             continue
         time.sleep(random.uniform(0.0, 5.0))  # Prevent 403's
-        print(id[i])
         rppDict = getRPP(id[i])
         playerInfo[i] = playerInfo[i] | rppDict
 
@@ -138,6 +137,16 @@ def add_to_player_list(dfPlayerInfo):
     return df
 
 
+def sort_player_list(playerList):
+    """
+    Sorts player list by Rating
+    """
+    playerList["Rating"] = playerList["Rating"].astype(int)
+    playerList.sort_values(by=["Rating"], ascending=False, inplace=True)
+    playerList.reset_index(drop=True, inplace=True)
+    return playerList
+
+
 def ratings_index(playerList):
     """Saves the index of the first instance of each rating to save time on searching."""
     index = {}
@@ -154,17 +163,13 @@ def ratings_index(playerList):
     dfIndex.to_csv("Index.csv")
 
 
-r"""
 def update_live_cards(playerList):
-    '''
-    Updates the live cards like the UCL live cards.
-    '''
-    for i in range(len(playerList)):
-        if playerList.iloc[i]["Card Type"] not in LIVECARDS:
-            continue
-        else:
-            url = r"https://www.futbin.com/24/player/{}".format(
-                playerList.iloc[i]["ID"]
+    for version in LIVECARDS:
+        print("Checking {}...".format(version))
+        page = 1
+        while True:
+            url = r"https://www.futbin.com/players?page={}&version={}".format(
+                page, version
             )
 
             user_agent = r"Mozilla/5.0"
@@ -172,42 +177,74 @@ def update_live_cards(playerList):
 
             http = ul.PoolManager()
             request = http.request("GET", url, headers=headers)
-            pagedata = request.data.decode("utf-8")
+            pagedata = unidecode(request.data.decode("utf-8"))
 
-            rating = re.findall(
-                r"pcdisplay-rat[\s\t]*\"[\s\t]*>[\s\t]*[0-9]+", pagedata
-            )[0]
-            rating = re.findall("[0-9]+", rating)[0]
+            if len(re.findall("No Results", pagedata)) != 0:
+                break
 
-            position = re.findall(r"pcdisplay-pos\"[\s\t]*>[A-Z]+", pagedata)[0]
-            position = re.findall("[A-Z]+", position)[0]
+            ratings = re.findall(r'form rating ut24 [\w\s-]*"[\s]*>[0-9]*', pagedata)
+            ratings = [int(i[-2:]) for i in ratings]
 
-            nation = re.findall(r"24/nations/.+\">.+<", pagedata)[0]
-            nation = re.findall(r">.+<", nation)[0][1:-1]
+            nations = re.findall("&nation.*data", pagedata)
+            nations = [re.findall(r'title="[\w\s]*', i)[0][7:] for i in nations]
 
-            club = re.findall(r"24/clubs/.+\">.+<", pagedata)[0]
-            club = re.findall(r">.+<", club)[0][1:-1]
-            if (
-                int(rating) == PLAYERRATINGS.loc[i]["Rating"]
-                and position == PLAYERRATINGS.loc[i]["Position"]
-                and nation == PLAYERRATINGS.loc[i]["Nation"]
-                and club == PLAYERRATINGS.loc[i]["Club"]
-            ):
-                continue
+            clubs = re.findall("&club.*data", pagedata)
+            clubs = [re.findall(r'title="[\w\s.\']*', i)[0][7:] for i in clubs]
 
-            playerList.iloc[i]["Nation"] = nation
-            playerList.iloc[i]["Club"] = club
-            playerList.iloc[i]["Position"] = position
-            playerList.iloc[i]["Rating"] = rating
+            positions = [
+                (i[18:-1]) for i in re.findall(r"font-weight-bold\">[A-Z]+<", pagedata)
+            ]
 
-            if playerList.iloc[i]["Position"] != "GK":
-                rpp = getRPP(playerList.iloc[i]["ID"])
+            names = re.findall(r'"player"\s+>[A-Za-z\s\'-]*', pagedata)
+            names = [re.findall(r">[A-Za-z\s\'-]*", i)[0][1:] for i in names]
 
-                for j in POSITIONS:
-                    playerList.iloc[i][j] = rpp[j]
+            ids = re.findall('data-playerid="[0-9]*', pagedata)
+            ids = [int(i[15:]) for i in ids]
 
+            for i in range(len(names)):
+                if up_to_date(
+                    names[i], positions[i], nations[i], clubs[i], ratings[i], ids[i]
+                ):
+                    continue
+                else:
+                    row = PLAYERRATINGS.loc[PLAYERRATINGS["ID"] == ids[i]].index[0]
+
+                    playerList.at[row, "Name"] = names[i]
+                    playerList.at[row, "Nation"] = nations[i]
+                    playerList.at[row, "Club"] = clubs[i]
+                    playerList.at[row, "Position"] = positions[i]
+                    playerList.at[row, "Rating"] = ratings[i]
+
+                    if playerList.iloc[row]["Position"] != "GK":
+                        rpp = getRPP(ids[i])
+
+                        time.sleep(random.uniform(0.0, 5.0))
+
+                        for j in POSITIONS:
+                            playerList.at[row, j] = rpp[j]
+            page += 1
     return playerList
-"""
+
+
+def up_to_date(name, position, nation, club, rating, id):
+    row = PLAYERRATINGS.loc[PLAYERRATINGS["ID"] == id]
+
+    currentName = row["Name"].values[0]
+    currentPosition = row["Position"].values[0]
+    currentNation = row["Nation"].values[0]
+    currentClub = row["Club"].values[0]
+    currentRating = row["Rating"].values[0]
+    if (
+        name == currentName
+        and position == currentPosition
+        and nation == currentNation
+        and club == currentClub
+        and rating == currentRating
+    ):
+        return True
+    else:
+        return False
+
 
 if __name__ == "__main__":
     main()
