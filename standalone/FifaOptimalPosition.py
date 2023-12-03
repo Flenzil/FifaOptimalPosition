@@ -130,12 +130,12 @@ def FindPlayers(player_name, player_type, player_rating):
                     player_type, player_rating, player_name.capitalize()
                 )
             )
-
+    altPos = match[3:6]
     area = [i for i in AREAS if match[3] in AREAS[i]][0]
     rpp = {
         POSITIONS[i]: int(float(match[i + 7]))
         for i in range(len(POSITIONS))
-        if POSITIONS[i] in AREAS[area]
+        if POSITIONS[i] in altPos
     }
     return rpp, area
 

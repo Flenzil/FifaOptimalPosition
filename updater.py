@@ -29,6 +29,8 @@ LIVECARDS = [
     "all_rttk",
     "fc_pro",
     "fc_pro_upgrade",
+    "thunderstruck",
+    "thunderstruck_icon",
 ]
 
 
@@ -103,10 +105,27 @@ def get_new_players(pageno):
         if playerInfo[i]["Position"] == "GK":
             continue
         time.sleep(random.uniform(0.0, 5.0))  # Prevent 403's
-        rppDict = getRPP(id[i])
+        rppDict, altposDict = getRPP(id[i])
         playerInfo[i] = playerInfo[i] | rppDict
+        playerInfo[i] = playerInfo[i] | altposDict
 
     df = pd.DataFrame(playerInfo)
+
+    dfOrder = [
+        "ID",
+        "Name",
+        "Rating",
+        "Position",
+        "Alt-Pos1",
+        "Alt-Pos2",
+        "Alt-Pos3",
+        "Nation",
+        "Club",
+        "Card Type",
+    ] + [i for i in POSITIONS]
+
+    df = df[dfOrder]
+
     return df
 
 
@@ -128,7 +147,16 @@ def getRPP(id):
 
     rppDict = {POSITIONS[i]: rppInFile[i][0] for i in range(len(rppInFile))}
 
-    return rppDict
+    altposDict = {}
+    for i in range(3):
+        regex = '(?<=alt-pos-sub-{}">)[A-Z]+'.format(i + 1)
+        try:
+            altpos = re.search(regex, pagedata)
+            altposDict["Alt-Pos{}".format(i + 1)] = altpos.group()
+        except (IndexError, AttributeError):
+            altposDict["Alt-Pos{}".format(i + 1)] = ""
+
+    return rppDict, altposDict
 
 
 def add_to_player_list(dfPlayerInfo):

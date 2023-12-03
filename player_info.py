@@ -6,7 +6,7 @@ import pandas as pd
 import urllib3 as ul
 
 PAGESTART = 1
-PAGEEND = 630
+PAGEEND = 634
 
 
 def main():
@@ -52,6 +52,9 @@ def get_player_ids(pageno):
     club = re.findall("&club.*data", data)
     club = [re.findall(r'title="[\w\s.\']*', i)[0][7:] for i in club]
 
+    alt_pos = re.findall('font-size: 12px;">[A-Z,]*<', data)
+    alt_pos = [re.findall(r"(?<=>)[A-Z,]*", i)[0].split(",") for i in alt_pos]
+
     player_info = {
         id[i]: {
             "Name": name[i],
@@ -63,12 +66,31 @@ def get_player_ids(pageno):
         }
         for i in range(len(id))
     }
+    for i in range(len(id)):
+        for j in range(3):
+            try:
+                player_info[id[i]]["Alt-Pos{}".format(str(j + 1))] = alt_pos[i][j]
+            except IndexError:
+                player_info[id[i]]["Alt-Pos{}".format(str(j + 1))] = ""
 
     df = pd.DataFrame(player_info).T
+    df = df[
+        [
+            "Name",
+            "Rating",
+            "Position",
+            "Alt-Pos1",
+            "Alt-Pos2",
+            "Alt-Pos3",
+            "Nation",
+            "Club",
+            "Card Type",
+        ]
+    ]
     if pageno == 1:
-        df.to_csv("player_info.csv")
+        df.to_csv("player_info2.csv")
     else:
-        df.to_csv("player_info.csv", mode="a", header=False)
+        df.to_csv("player_info2.csv", mode="a", header=False)
 
 
 if __name__ == "__main__":
