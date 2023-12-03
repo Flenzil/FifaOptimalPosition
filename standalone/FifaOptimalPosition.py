@@ -271,12 +271,12 @@ def AllocatePlayers(d, player, rpp, n, formation):
         diff = []
 
         for match in matchPlayers:
-            rPlayerInPlace = rpp[match[0]][
-                pos
-            ]  # Rating for player already in this position
+            # Rating for player already in this position
+            rPlayerInPlace = rpp[match[0]][pos]
+            # Rating for player already in this position in thier next best position
             rPlayerInPlaceNext = NextBestPosRating(
                 match[0], match[1], rpp, formationNoNums
-            )  # Rating for player already in this position in thier next best position
+            )
 
             avg1 = (rPlayerInPlace + rPlayerNext) / 2
             avg2 = (rPlayerInPlaceNext + rPlayer) / 2
