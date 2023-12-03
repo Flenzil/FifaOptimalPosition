@@ -3,14 +3,14 @@ import linecache
 import re
 import pandas as pd
 
-FORMATIONS = pd.read_csv("../FORMATIONS.csv")
+FORMATIONS = pd.read_csv("../formations.csv")
 
 AREAS = {
-    i: [j for j in pd.read_csv("../AREAS.csv")[i] if j == j]
-    for i in pd.read_csv("../AREAS.csv")
+    i: [j for j in pd.read_csv("../areas.csv")[i] if j == j]
+    for i in pd.read_csv("../areas.csv")
 }
 
-INDEX = pd.read_csv("../Index.csv")
+INDEX = pd.read_csv("../index.csv")
 INDEX = {
     INDEX["Rating"].tolist()[i]: INDEX["Unnamed: 0"].tolist()[i]
     for i in range(len(INDEX))
@@ -34,7 +34,7 @@ POSITIONS = [
 
 
 def main():
-    dfplayers = pd.read_csv("../Players.csv")
+    dfplayers = pd.read_csv("../players.csv")
 
     playerName = dfplayers["Players"]
     playerRating = dfplayers["Player Ratings"]

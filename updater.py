@@ -7,7 +7,7 @@ from unidecode import unidecode
 
 
 PLAYERRATINGS = pd.read_csv("player_info.csv")
-RATINGINDEX = {str(i[1]): int(i[0]) for i in pd.read_csv("Index.csv").values}
+RATINGINDEX = {str(i[1]): int(i[0]) for i in pd.read_csv("index.csv").values}
 POSITIONS = [
     "ST",
     "RW",
@@ -160,7 +160,7 @@ def ratings_index(playerList):
     index[len(playerList) + 2] = str(playerList.loc[len(playerList) - 1, "Rating"] - 1)
 
     dfIndex = pd.DataFrame(index, index=["Rating"]).T
-    dfIndex.to_csv("Index.csv")
+    dfIndex.to_csv("index.csv")
 
 
 def update_live_cards(playerList):
