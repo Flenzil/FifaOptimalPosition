@@ -166,44 +166,64 @@ def AreasInFormation():
 
 
 def Restrictions(rpp):
+    """
+    Restricts formations to only those that can support the inputted players
+    Attemps to fill each formation with the input players. If a position cannot
+    be filled by any player then the formation is invalid.
+    """
     invalidFormations = []
     for formationName, formation in FORMATIONS.items():
+        # Dictionary to contain filled positions.
         d = {position: "" for position in formation}
         players = copy.deepcopy(rpp)
+
+        # Create a history list, which will contain the positions that a player
+        # has visited while filling the team.
         for player in players:
             players[player]["history"] = []
+
         i = 0
         while True:
+            # As long as there is an empty position in the team, keep looping through
+            # players.
             position = formation[i % len(formation)]
+            print(formationName)
             if d[position] == "":
                 d = FillPosition(players, position, d)
             if d == 0:
                 invalidFormations.append(formationName)
                 break
-            if len(players) == 0:
+            if "" not in d.values():
                 break
             i += 1
     allowedFormations = [i for i in FORMATIONS if i not in invalidFormations]
+    if allowedFormations == []:
+        raise SystemExit("Not a valid team!")
     return allowedFormations
 
 
 def FillPosition(players, position, d):
     positionNoNums = re.sub("[0-9]", "", position)
     for playerName, playerPos in players.items():
-        if positionNoNums in playerPos and positionNoNums not in playerPos["history"]:
+        historyNoNums = [re.sub("[0-9]", "", i) for i in playerPos["history"]]
+        if positionNoNums in playerPos and positionNoNums not in historyNoNums:
             d[position] = {playerName: playerPos}
 
             if len(playerPos["history"]) > 0:
                 d[playerPos["history"][-1]] = ""
             else:
                 del players[playerName]
-            playerPos["history"].append(positionNoNums)
+            playerPos["history"].append(position)
 
             return d
     placedPlayers = {}
-    for i in d.values():
-        if i != "" and position in i.keys() and position not in i["history"]:
-            placedPlayers = placedPlayers | i
+    for pos in d.keys():
+        if d[pos] == "":
+            continue
+        for j in d[pos].values():
+            historyNoNums = [re.sub("[0-9]", "", i) for i in j["history"]]
+            if positionNoNums in j and positionNoNums not in historyNoNums:
+                placedPlayers = placedPlayers | d[pos]
     if placedPlayers == {}:
         return 0
     return FillPosition(placedPlayers, position, d)
