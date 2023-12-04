@@ -187,35 +187,53 @@ def Restrictions(rpp):
             # As long as there is an empty position in the team, keep looping through
             # players.
             position = formation[i % len(formation)]
-            print(formationName)
             if d[position] == "":
                 d = FillPosition(players, position, d)
+
+            # Position unable to be filled
             if d == 0:
                 invalidFormations.append(formationName)
                 break
+
+            # Team successfully filled
             if "" not in d.values():
                 break
             i += 1
+
     allowedFormations = [i for i in FORMATIONS if i not in invalidFormations]
+
     if allowedFormations == []:
         raise SystemExit("Not a valid team!")
+
     return allowedFormations
 
 
 def FillPosition(players, position, d):
+    """
+    Places player in position. If no player fits in position, then check already
+    placed players to see if any of those could move to that position.
+    """
     positionNoNums = re.sub("[0-9]", "", position)
+
     for playerName, playerPos in players.items():
         historyNoNums = [re.sub("[0-9]", "", i) for i in playerPos["history"]]
         if positionNoNums in playerPos and positionNoNums not in historyNoNums:
+            # Place player in position
             d[position] = {playerName: playerPos}
 
+            # If player has been moved from a previous position, empty that position
+            # otherwise, remove player from list of unplaced players.
             if len(playerPos["history"]) > 0:
                 d[playerPos["history"][-1]] = ""
             else:
                 del players[playerName]
-            playerPos["history"].append(position)
 
+            # Add position to player history so they won't be placed there again.
+            playerPos["history"].append(position)
             return d
+
+    # If no player fits the position, check the already placed players that haven't already
+    # been in that position at some point in their history.
     placedPlayers = {}
     for pos in d.keys():
         if d[pos] == "":
@@ -224,56 +242,13 @@ def FillPosition(players, position, d):
             historyNoNums = [re.sub("[0-9]", "", i) for i in j["history"]]
             if positionNoNums in j and positionNoNums not in historyNoNums:
                 placedPlayers = placedPlayers | d[pos]
+
+    # If no placed player matches either, then return 0 which is handled in Restrictions
     if placedPlayers == {}:
         return 0
+    #
+    # Recursive call to place player from list of eligible placed players.
     return FillPosition(placedPlayers, position, d)
-
-
-'''
-def Restrictions(areas):
-    """
-    Returns the valid formations given the team inputted by the user. So if
-    the input team has 2 CBs then any formation that requires 3 CB is invalid.
-    """
-    areasInFormation = (
-        AreasInFormation()
-    )  # Number of positions in each area for every for
-
-    playerAreas = {}  # Number of positions in each area for input formation
-    for i in areas.values():
-        try:
-            playerAreas[i] += 1
-        except KeyError:
-            playerAreas[i] = 1
-
-    """
-    Check if number of positions in the each area of each formation is
-    the same as the number of positions in each area of the input formation.
-    So if the input formation has 4 central players, reject all formations that
-    have !4 central players.
-    """
-    allowedFormations = []
-    match = 0
-    for item in areasInFormation.items():
-        formationName = item[0]
-        formation = item[1]
-        for area in playerAreas:
-            match = 1
-            try:
-                if playerAreas[area] != formation[area]:
-                    match = 0
-                    break
-            except KeyError:
-                match = 0
-                break
-        if match:
-            allowedFormations.append(formationName)
-
-    if len(allowedFormations) == 0:
-        raise Exception("Invalid Team!")
-
-    return allowedFormations
-'''
 
 
 def OptimisePositions(players, rpp, formation):
