@@ -1,3 +1,4 @@
+import copy
 import time
 import linecache
 import re
@@ -39,10 +40,13 @@ def main():
     playerName = dfplayers["Players"]
     playerRating = dfplayers["Player Ratings"]
     playerType = dfplayers["Player Type"]
-    rpp, areas = LoadPlayers(playerName, playerType, playerRating)
-    allowedFormations = Restrictions(
-        areas
-    )  # Restrict the formations considered to just those that the input players fit.
+
+    rpp = LoadPlayers(playerName, playerType, playerRating)
+
+    # Restrict the formations considered to just those that the input players fit.
+    allowedFormations = Restrictions(rpp)
+    print(allowedFormations)
+
     teams = {}
     average_rpp = {}
 
@@ -60,12 +64,9 @@ def main():
 
 def LoadPlayers(playerName, playerType, playerRating):
     rpp = {}
-    areas = {}
     for i in range(len(playerName)):
-        rpp[playerName[i]], areas[playerName[i]] = FindPlayers(
-            playerName[i], playerType[i], playerRating[i]
-        )
-    return rpp, areas
+        rpp[playerName[i]] = FindPlayers(playerName[i], playerType[i], playerRating[i])
+    return rpp
 
 
 def FindPlayers(player_name, player_type, player_rating):
@@ -78,7 +79,7 @@ def FindPlayers(player_name, player_type, player_rating):
         line = linecache.getline("../player_info.csv", i)
         cols = line.split(",")
 
-        if cols[7] == "":  # Players with no RPP (e.g GKs)
+        if cols[10] == "":  # Players with no RPP (e.g GKs)
             continue
 
         rating_match = str(player_rating) == cols[2]
@@ -91,7 +92,7 @@ def FindPlayers(player_name, player_type, player_rating):
             continue
 
         type_match = all(
-            ([x.lower() in cols[6].lower() for x in player_type.split(" ")])
+            ([x.lower() in cols[9].lower() for x in player_type.split(" ")])
         )
         if not type_match:
             continue
@@ -101,14 +102,14 @@ def FindPlayers(player_name, player_type, player_rating):
     if len(matches) > 1:
         print(
             "Did you mean {} who plays {} for {}? [0]".format(
-                matches[0][1], matches[0][3], matches[0][5]
+                matches[0][1], matches[0][3], matches[0][8]
             )
         )
         for i in range(1, len(matches)):
             print("or")
             print(
                 "Did you mean {} who plays {} for {}? [{}]".format(
-                    matches[i][1], matches[i][3], matches[i][5], i
+                    matches[i][1], matches[i][3], matches[i][8], i
                 )
             )
         print()
@@ -130,14 +131,14 @@ def FindPlayers(player_name, player_type, player_rating):
                     player_type, player_rating, player_name.capitalize()
                 )
             )
-    altPos = match[3:6]
-    area = [i for i in AREAS if match[3] in AREAS[i]][0]
+    pos = match[2:7]
+
     rpp = {
-        POSITIONS[i]: int(float(match[i + 7]))
+        POSITIONS[i]: int(float(match[i + 10]))
         for i in range(len(POSITIONS))
-        if POSITIONS[i] in altPos
+        if POSITIONS[i] in pos
     }
-    return rpp, area
+    return rpp
 
 
 def AreasInFormation():
@@ -164,6 +165,51 @@ def AreasInFormation():
     return areasInFormation
 
 
+def Restrictions(rpp):
+    invalidFormations = []
+    for formationName, formation in FORMATIONS.items():
+        d = {position: "" for position in formation}
+        players = copy.deepcopy(rpp)
+        for player in players:
+            players[player]["history"] = []
+        i = 0
+        while True:
+            position = formation[i % len(formation)]
+            if d[position] == "":
+                d = FillPosition(players, position, d)
+            if d == 0:
+                invalidFormations.append(formationName)
+                break
+            if len(players) == 0:
+                break
+            i += 1
+    allowedFormations = [i for i in FORMATIONS if i not in invalidFormations]
+    return allowedFormations
+
+
+def FillPosition(players, position, d):
+    positionNoNums = re.sub("[0-9]", "", position)
+    for playerName, playerPos in players.items():
+        if positionNoNums in playerPos and positionNoNums not in playerPos["history"]:
+            d[position] = {playerName: playerPos}
+
+            if len(playerPos["history"]) > 0:
+                d[playerPos["history"][-1]] = ""
+            else:
+                del players[playerName]
+            playerPos["history"].append(positionNoNums)
+
+            return d
+    placedPlayers = {}
+    for i in d.values():
+        if i != "" and position in i.keys() and position not in i["history"]:
+            placedPlayers = placedPlayers | i
+    if placedPlayers == {}:
+        return 0
+    return FillPosition(placedPlayers, position, d)
+
+
+'''
 def Restrictions(areas):
     """
     Returns the valid formations given the team inputted by the user. So if
@@ -207,6 +253,7 @@ def Restrictions(areas):
         raise Exception("Invalid Team!")
 
     return allowedFormations
+'''
 
 
 def OptimisePositions(players, rpp, formation):
@@ -216,6 +263,9 @@ def OptimisePositions(players, rpp, formation):
     for this formation.
     """
     positionDict = {i: ["", 0] for i in formation}  # Create Blank dictionary to fill
+
+    # List of players that cannot be moved, they are in their lowest rated position
+
     for i in players:
         positionDict = AllocatePlayers(positionDict, i, rpp, 0, formation)
     positionDict = {
@@ -258,25 +308,46 @@ def AllocatePlayers(d, player, rpp, n, formation):
         in the biggest increase to average rpp when swapped with the current
         player.
         """
+        # Finds duplicate positions
+        matches = re.findall("{}[0-9]*".format(pos), formationString)
 
-        matches = re.findall(
-            "{}[0-9]*".format(pos), formationString
-        )  # Finds duplicate positions
-        matchPlayers = [d[i] for i in matches]  # Finds the players in those positions
+        # Finds names of players in the duplicate positions but makes sure that they
+        # are not currently in their lowest rated position, which means they wouldn't
+        # be able to move and so shouldn't be considered.
+        matchPlayers = []
+        for i in matches:
+            if d[i][1] < len(rpp[d[i][0]]):
+                matchPlayers.append(d[i])
 
-        rPlayer = rpp[player][pos]  # Rating for current player in current position
-        rPlayerNext = NextBestPosRating(
-            player, n, rpp, formationNoNums
-        )  # Rating for current player in next best position
+        # If no matches survive the above, then move on to the current players next
+        # best position.
+        if len(matchPlayers) == 0:
+            d = AllocatePlayers(d, player, rpp, n + 1, formation)
+            return d
+
+        # Rating for current player in current position
+        rPlayer = rpp[player][pos]
+
+        # Rating for current player in their next best position. If there is no next
+        # best position (IndexError from NextBestPosRating function), then set rating
+        # to some low number so that it will always lose matchups.
+        try:
+            rPlayerNext = NextBestPosRating(player, n, rpp, formationNoNums)
+        except IndexError:
+            rPlayerNext = -1000
+
         diff = []
-
         for match in matchPlayers:
             # Rating for player already in this position
             rPlayerInPlace = rpp[match[0]][pos]
             # Rating for player already in this position in thier next best position
-            rPlayerInPlaceNext = NextBestPosRating(
-                match[0], match[1], rpp, formationNoNums
-            )
+            # As before, a very low number is used if there is no next best position.
+            try:
+                rPlayerInPlaceNext = NextBestPosRating(
+                    match[0], match[1], rpp, formationNoNums
+                )
+            except IndexError:
+                rPlayerInPlaceNext = -1000
 
             avg1 = (rPlayerInPlace + rPlayerNext) / 2
             avg2 = (rPlayerInPlaceNext + rPlayer) / 2
@@ -287,30 +358,23 @@ def AllocatePlayers(d, player, rpp, n, formation):
         matchPlayer = matchPlayers[diff.index(min(diff))][0]
 
         if min(diff) < 0:
-            """
-            Moves player in current position to thier next best position and
-            places current player in current position
-            """
+            # Moves player in current position to thier next best position and
+            # places current player in current position
             rank = d[pos][1]  # Player is in thier rankth best position.
             d[pos] = ["", 0]  # Clear position
-            d, _ = PlacePlayer(
-                d, player, re.sub("[0-9]", "", pos), formationString, n
-            )  # Place player in position
-            d = AllocatePlayers(
-                d, matchPlayer, rpp, rank + 1, formation
-            )  # Recursive call
 
+            # Place player in position
+            d, _ = PlacePlayer(d, player, re.sub("[0-9]", "", pos), formationString, n)
+
+            # Recrusive call
+            d = AllocatePlayers(d, matchPlayer, rpp, rank + 1, formation)
             return d
         else:
-            """
-            Allocate current player to their next best position
-            """
+            # Allocate current player to their next best position
             AllocatePlayers(d, player, rpp, n + 1, formation)
             return d
     except KeyError:
-        """
-        Place current player in position
-        """
+        # Place current player in position
         d, _ = PlacePlayer(d, player, pos, formationString, n)
         return d
 
@@ -362,4 +426,6 @@ def NthBestPos(player, rpp, n):
 
 
 if __name__ == "__main__":
+    start = time.time()
     main()
+    print(time.time() - start)
