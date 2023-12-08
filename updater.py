@@ -37,14 +37,21 @@ LIVECARDS = [
 def main():
     page = 1
     print("Checking for new players...")
+    updatedList = PLAYERRATINGS
+
     while True:
         newPlayers = get_new_players(page)  # Find new players
-        updatedList = add_to_player_list(newPlayers)  # Add to list
+
+        if not isinstance(newPlayers, pd.DataFrame):
+            break
+
+        updatedList = pd.concat([updatedList, newPlayers])
 
         if len(newPlayers) < 100:  # Check if next page is needed
             break
         page += 1
 
+    newPlayers = get_new_players(page)  # Find new players
     updatedList = update_live_cards(updatedList)  # Update live cards
     updatedList = sort_player_list(updatedList)  # Sort list by rating
     ratings_index(updatedList)  # Index ratings
@@ -97,6 +104,8 @@ def get_new_players(pageno):
         for i in range(len(id))
         if int(id[i]) not in PLAYERRATINGS["ID"].values
     ]
+    if len(playerInfo) == 0:
+        return None
 
     """
     Now get RPP for the new players.
@@ -104,6 +113,7 @@ def get_new_players(pageno):
     for i in range(len(playerInfo)):
         if playerInfo[i]["Position"] == "GK":
             continue
+        print(playerInfo[i]["Name"])
         time.sleep(random.uniform(0.0, 5.0))  # Prevent 403's
         rppDict, altposDict = getRPP(id[i])
         playerInfo[i] = playerInfo[i] | rppDict
@@ -159,9 +169,8 @@ def getRPP(id):
     return rppDict, altposDict
 
 
-def add_to_player_list(dfPlayerInfo):
-    df = PLAYERRATINGS
-    df = pd.concat([df, dfPlayerInfo]).reset_index(drop=True)
+def add_to_player_list(dfPlayerInfo, dfCurrentList):
+    df = pd.concat([dfCurrentList, dfPlayerInfo]).reset_index(drop=True)
     return df
 
 
@@ -230,6 +239,7 @@ def update_live_cards(playerList):
             ids = [int(i[15:]) for i in ids]
 
             for i in range(len(names)):
+                print(names[i])
                 if up_to_date(
                     names[i], positions[i], nations[i], clubs[i], ratings[i], ids[i]
                 ):
@@ -244,12 +254,15 @@ def update_live_cards(playerList):
                     playerList.at[row, "Rating"] = ratings[i]
 
                     if playerList.iloc[row]["Position"] != "GK":
-                        rpp = getRPP(ids[i])
+                        rpp, altPos = getRPP(ids[i])
 
                         time.sleep(random.uniform(0.0, 5.0))
 
                         for j in POSITIONS:
                             playerList.at[row, j] = rpp[j]
+                        for j in range(3):
+                            dictString = "Alt-Pos{}".format(j + 1)
+                            playerList.at[row, dictString] = altPos[dictString]
             page += 1
     return playerList
 
