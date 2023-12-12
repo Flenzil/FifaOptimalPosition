@@ -19,7 +19,6 @@ def OptimisePositions(players, formation):
         AllocatePlayers(team, player, 0)
 
     # Average rpp for formation
-    print(team)
     avg = 0
     for pos, player in team.players.items():
         avg += player.rpp[utils.remove_nums(pos)]
@@ -41,15 +40,10 @@ def AllocatePlayers(team, player, rank, force=False):
     """
     pos = player.nth_best_pos(rank)
 
-    print(player, pos)
-    print(team.positions)
     if pos not in utils.remove_nums(team.positions):
         rank = team.nearest_valid_pos(player, rank, return_rank=True)
         pos = player.nth_best_pos(rank)
 
-    print(player, pos)
-    print(team)
-    print(team.ranks)
     if team.place_player(player, pos) == 0:
         return
 
@@ -158,8 +152,6 @@ def rating_and_next(team, player, position, rank):
         next_best_rating = player.rpp[team.nearest_valid_pos(player, rank)]
     except IndexError:
         next_best_rating = -1000
-    print(position, rating)
-    print(next_best_rating)
     return rating, next_best_rating
 
 
@@ -280,5 +272,4 @@ if __name__ == "__main__":
 
     players = grab.LoadPlayers(playerName, playerType, playerRating)
     allowed_formations = restrict_formations(players)
-    print(allowed_formations)
     # OptimisePositions(players, FORMATIONS["433"])

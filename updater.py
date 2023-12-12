@@ -6,9 +6,9 @@ import urllib3 as ul
 from unidecode import unidecode
 
 
-PLAYERRATINGS = pd.read_csv("../data/player_info.csv")
+PLAYERRATINGS = pd.read_csv("data/player_info.csv")
 
-RATINGINDEX = {str(i[1]): int(i[0]) for i in pd.read_csv("../data/index.csv").values}
+RATINGINDEX = {str(i[1]): int(i[0]) for i in pd.read_csv("data/index.csv").values}
 
 POSITIONS = [
     "ST",
@@ -53,12 +53,11 @@ def main():
             break
         page += 1
 
-    newPlayers = get_new_players(page)  # Find new players
     updatedList = update_live_cards(updatedList)  # Update live cards
     updatedList = sort_player_list(updatedList)  # Sort list by rating
     ratings_index(updatedList)  # Index ratings
 
-    updatedList.to_csv("../data/player_info.csv", index=False)  # Save
+    updatedList.to_csv("data/player_info.csv", index=False)  # Save
     print("Up to date!")
 
 
