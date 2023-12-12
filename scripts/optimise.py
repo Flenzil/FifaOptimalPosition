@@ -1,8 +1,8 @@
 import pandas as pd
-import classes
-import utils
+import scripts.classes as classes
+import scripts.utils as utils
 
-FORMATIONS = pd.read_csv("../formations.csv")
+FORMATIONS = pd.read_csv("data/formations.csv")
 
 __all__ = ["OptimisePositions"]
 

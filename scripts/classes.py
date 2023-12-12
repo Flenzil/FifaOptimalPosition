@@ -1,5 +1,5 @@
 import re
-import utils
+import scripts.utils as utils
 
 __all__ = ["Player", "Team"]
 

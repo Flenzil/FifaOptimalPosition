@@ -1,12 +1,12 @@
 import pandas as pd
-import grab
-import optimise
+import scripts.optimise as optimise
+import scripts.grab as grab
 
-FORMATIONS = pd.read_csv("../formations.csv")
+FORMATIONS = pd.read_csv("data/formations.csv")
 
 
 def main():
-    df_players = pd.read_csv("../players.csv")
+    df_players = pd.read_csv("data/players.csv")
 
     player_name = df_players["Players"]
     player_rating = df_players["Player Ratings"]

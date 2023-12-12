@@ -1,9 +1,9 @@
 import linecache
 import pandas as pd
 import re
-from classes import Player
+from scripts.classes import Player
 
-INDEX = pd.read_csv("../data/index.csv")
+INDEX = pd.read_csv("data/index.csv")
 INDEX = {
     INDEX["Rating"].tolist()[i]: INDEX["Unnamed: 0"].tolist()[i]
     for i in range(len(INDEX))
@@ -42,7 +42,7 @@ def FindPlayers(player_name, player_type, player_rating):
     matches = []
     # Find players that match
     for i in range(INDEX[player_rating], INDEX[player_rating - 1]):
-        line = linecache.getline("../player_info.csv", i)
+        line = linecache.getline("data/player_info.csv", i)
         cols = line.split(",")
 
         if cols[10] == "":  # Players with no RPP (e.g GKs)
