@@ -1,4 +1,5 @@
 import copy
+from operator import ne
 import time
 import linecache
 import re
@@ -43,6 +44,7 @@ def main():
 
     rpp = LoadPlayers(playerName, playerType, playerRating)
 
+    print(rpp)
     # Restrict the formations considered to just those that the input players fit.
     allowedFormations = Restrictions(rpp)
     print(allowedFormations)
@@ -276,24 +278,70 @@ def OptimisePositions(players, rpp, formation):
     return positionDict, avg
 
 
-def AllocatePlayers(d, player, rpp, n, formation):
+def Displace(d, player, pos, n, formation):
+    formationString = "".join(formation)
+
+    d[pos + "1"] = ["", 0]  # Clear position
+
+    # Place player in position
+    d, _ = PlacePlayer(d, player, re.sub("[0-9]", "", pos), formationString, n)
+
+    # Recrusive call
+    return d
+
+
+def PlayersInPosition(d, pos, rpp):
+    regex = pos + "[0-9]*"
+
+    playersInPosition = []
+    for i in d.keys():
+        try:
+            match = re.search(regex, i).group()
+            rating = rpp[d[match]][pos]
+            playersInPosition.append(
+                {d[match][0]: {"Position": match, "Rating": rating, "n": d[match][1]}}
+            )
+        except AttributeError:
+            continue
+    return playersInPosition
+
+
+def AllocatePlayers(d, player, rpp, n, formation, force=False):
     """
     Fills a dictionary of positions : [players, n] such that the players are
     in their nth highest rpp. Attempts to place a  player in their best position
     unless there is another player better than them in that position.
     In that case, they are placed in their next best position until all
     players are placed.
+    If force = True, the player cannot lose any matchups. This is used to resolve
+    unresolvable collisions, where both players are in their loweest rated position.
+    One of the players is then put back through this function with force = True.
     """
     formationNoNums = [re.sub(r"[0-9]+", "", i) for i in formation]
     formationString = "".join(formation)
 
     pos = NthBestPos(player, rpp, n)
+
     while pos not in formationNoNums:
         n = n + 1
         pos = NthBestPos(player, rpp, n)
     d, code = PlacePlayer(d, player, pos, formationString, n)
     if code == 0:  # Player was placed successfully
         return d
+
+    if len(rpp[player]) == 1:
+        d = Displace(d, player, pos, n, formation)
+
+        playersInPlace = PlayersInPosition(d, pos, rpp)
+        playerInPlace = playersInPlace[0]
+        name = list(playerInPlace[0].keys())[0]
+        rating = playersInPlace[0]["Name"]
+        for i in playersInPlace[1:]:
+            if i["Rating"] < playerInPlace["Rating"]:
+                name = list(i.keys())[0]
+                rating = i["Rating"]
+
+        return AllocatePlayers(d, name, rpp, rating + 1, formation)
 
     # Player was not placed and there are duplicate positions that are all filled.
     try:
@@ -317,11 +365,14 @@ def AllocatePlayers(d, player, rpp, n, formation):
         # If no matches survive the above, then move on to the current players next
         # best position.
         if len(matchPlayers) == 0:
-            d = AllocatePlayers(d, player, rpp, n + 1, formation)
+            d = AllocatePlayers(d, player, rpp, n + 1, formation, force=force)
             return d
 
         # Rating for current player in current position
         rPlayer = rpp[player][pos]
+        if force:
+            rPlayer = 1000
+            force = False
 
         # Rating for current player in their next best position. If there is no next
         # best position (IndexError from NextBestPosRating function), then set rating
@@ -344,6 +395,11 @@ def AllocatePlayers(d, player, rpp, n, formation):
             except IndexError:
                 rPlayerInPlaceNext = -1000
 
+            if rPlayerNext == -1000 and rPlayerInPlaceNext == -1000:
+                n = PrevBestPos(player, n, rpp, formationNoNums)
+                d = AllocatePlayers(d, player, rpp, n, formation, force=True)
+                return d
+
             avg1 = (rPlayerInPlace + rPlayerNext) / 2
             avg2 = (rPlayerInPlaceNext + rPlayer) / 2
 
@@ -362,16 +418,29 @@ def AllocatePlayers(d, player, rpp, n, formation):
             d, _ = PlacePlayer(d, player, re.sub("[0-9]", "", pos), formationString, n)
 
             # Recrusive call
-            d = AllocatePlayers(d, matchPlayer, rpp, rank + 1, formation)
+            d = AllocatePlayers(d, matchPlayer, rpp, rank + 1, formation, force=force)
             return d
         else:
             # Allocate current player to their next best position
-            AllocatePlayers(d, player, rpp, n + 1, formation)
+            AllocatePlayers(d, player, rpp, n + 1, formation, force=force)
             return d
     except KeyError:
         # Place current player in position
         d, _ = PlacePlayer(d, player, pos, formationString, n)
         return d
+
+
+def PrevBestPos(player, n, rpp, formation):
+    """
+    Returns players previous best positional rating that exists in the current
+    formation.
+    """
+    m = n - 1
+    nextBestPos = NthBestPos(player, rpp, m)
+    while nextBestPos not in formation:
+        m = m - 1
+        nextBestPos = NthBestPos(player, rpp, m)
+    return m
 
 
 def NextBestPosRating(player, n, rpp, formation):

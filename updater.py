@@ -256,7 +256,7 @@ def update_live_cards(playerList):
                     if playerList.iloc[row]["Position"] != "GK":
                         rpp, altPos = getRPP(ids[i])
 
-                        time.sleep(random.uniform(0.0, 5.0))
+                        time.sleep(random.uniform(0.0, 7.5))
 
                         for j in POSITIONS:
                             playerList.at[row, j] = rpp[j]
