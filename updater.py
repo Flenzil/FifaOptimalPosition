@@ -198,7 +198,7 @@ def ratings_index(playerList):
     index[len(playerList) + 2] = str(playerList.loc[len(playerList) - 1, "Rating"] - 1)
 
     dfIndex = pd.DataFrame(index, index=["Rating"]).T
-    dfIndex.to_csv("index.csv")
+    dfIndex.to_csv("data/index.csv")
 
 
 def update_live_cards(playerList):
