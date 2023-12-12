@@ -3,7 +3,7 @@ import pandas as pd
 import re
 from classes import Player
 
-INDEX = pd.read_csv("../index.csv")
+INDEX = pd.read_csv("../data/index.csv")
 INDEX = {
     INDEX["Rating"].tolist()[i]: INDEX["Unnamed: 0"].tolist()[i]
     for i in range(len(INDEX))

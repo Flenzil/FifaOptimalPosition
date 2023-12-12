@@ -6,8 +6,10 @@ import urllib3 as ul
 from unidecode import unidecode
 
 
-PLAYERRATINGS = pd.read_csv("player_info.csv")
-RATINGINDEX = {str(i[1]): int(i[0]) for i in pd.read_csv("index.csv").values}
+PLAYERRATINGS = pd.read_csv("../data/player_info.csv")
+
+RATINGINDEX = {str(i[1]): int(i[0]) for i in pd.read_csv("../data/index.csv").values}
+
 POSITIONS = [
     "ST",
     "RW",
@@ -56,7 +58,7 @@ def main():
     updatedList = sort_player_list(updatedList)  # Sort list by rating
     ratings_index(updatedList)  # Index ratings
 
-    updatedList.to_csv("player_info.csv", index=False)  # Save
+    updatedList.to_csv("../data/player_info.csv", index=False)  # Save
     print("Up to date!")
 
 
@@ -186,10 +188,10 @@ def sort_player_list(playerList):
 
 def ratings_index(playerList):
     """Saves the index of the first instance of each rating to save time on searching."""
+
+    # +2 is added to negate the offset. Python starts at 0 but the csv file starts at 2
     index = {}
-    index[2] = str(
-        playerList.loc[0, "Rating"]
-    )  # +2 is added to negate the offset. Python starts at 0 but the csv file starts at 2
+    index[2] = str(playerList.loc[0, "Rating"])
 
     for i in range(1, len(playerList)):
         if playerList.loc[i - 1, "Rating"] != playerList.loc[i, "Rating"]:
