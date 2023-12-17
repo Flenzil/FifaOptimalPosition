@@ -18,9 +18,6 @@ def main():
 
     allowed_formations = optimise.restrict_formations(players)
 
-    teams = []
-    average_rpp = []
-
     teams, average_rpp = zip(
         *[
             optimise.OptimisePositions(players, FORMATIONS[i])
@@ -33,14 +30,10 @@ def main():
     optimal_formation = teams[average_rpp.index(max(average_rpp))]
 
     print()
-    print("===========Optimal Formation:", optimal_formation.formation, "============")
+    print(f"===========Optimal Formation: {optimal_formation.formation}============")
     print()
     print(optimal_formation)
 
 
 if __name__ == "__main__":
-    import time
-
-    start = time.time()
     main()
-    print(time.time() - start)

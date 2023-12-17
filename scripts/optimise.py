@@ -116,12 +116,12 @@ def find_best_pos_to_displace(team, pos, player, rank, force=False):
         force = False
 
     diff = []
-    for i in range(len(positions_in_team)):
+    # for i in range(len(positions_in_team)):
+    for i, (player_it, position_it) in enumerate(
+        zip(players_in_team, positions_in_team)
+    ):
         r_player_in_position, r_player_in_position_next = rating_and_next(
-            team,
-            players_in_team[i],
-            positions_in_team[i],
-            team.ranks[positions_in_team[i]],
+            team, player_it, position_it, team.ranks[position_it]
         )
 
         if r_player_next == -1000 and r_player_in_position_next == -1000:
@@ -182,7 +182,7 @@ class FTeam(classes.Team):
 
                 # If player has been moved from a previous position, empty that position
                 # otherwise, remove player from list of unplaced players.
-                if len(player.history) > 0:
+                if player.history:
                     self.players[player.history[-1]].name = ""
                 else:
                     player.placed = True
@@ -206,7 +206,7 @@ class FTeam(classes.Team):
                     placedPlayers.append(player_in_team)
 
         # If no placed player matches either, then return False
-        if placedPlayers == []:
+        if not placedPlayers:
             return False
         #
         # Recursive call to place player from list of eligible placed players.
@@ -243,9 +243,9 @@ def restrict_formations(players):
                     invalidFormations.append(formationName)
                     break
 
-            for j in f_players:
-                if j.placed:
-                    f_players.remove(j)
+            for fp in f_players:
+                if fp.placed:
+                    f_players.remove(fp)
 
             # Team successfully filled
             if all([j.name != "" for j in team.players.values()]):
