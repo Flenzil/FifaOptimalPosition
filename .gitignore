@@ -2,3 +2,4 @@ test.py
 .~lock*
 __pycache__
 standalone
+tmp.txt
