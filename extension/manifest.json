@@ -1,0 +1,13 @@
+{
+  "name": "URL change detector",
+  "description": "detect a URL change in a tab, and inject a script to the page!",
+  "version": "1.0",
+
+  "manifest_version": 3,
+  "permissions": ["scripting", "tabs"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+
+  "background": {
+    "service_worker": "worker.js"
+  }
+}
